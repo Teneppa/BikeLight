@@ -39,19 +39,35 @@ class BikeLight {
             Calls NeoPixel's begin() -method and displays starting animation.
         */
         np.begin();
-        for(int i=1; i<=NEO_LED_COUNT; i++) {
-            np.fill(red, 0, i);
+        for(int i=0; i<=NEO_LED_COUNT; i++) {
+            np.setPixelColor(i, red);
             np.show();
             delay(100);
         }
         np.clear();
     }
 
+    void brake() {
+        /*
+            Braking, set every pixel to red.
+        */
+        np.fill(red);
+    }
+
+    void idle() {
+        /*
+            Idle state, set every other pixel's color to dim_red.
+        */
+        for(int i=0; i<NEO_LED_COUNT; i+=2){
+            np.setPixelColor(i, dim_red);
+        }
+    }
+
     void blink() {
         /*
             Displays blinking animation on the correct side.
-            Calculates the number of leds to set to yellow by using passed
-            time since blinker was activated (blink_timer) and modulo.
+            Calculates the state of blinking cycle by the
+            time since blinker was activated (blink_timer).
         */
         int blink_cycle_now = (millis() - blink_timer) / 500 % 3 + 1;
         if(blinking == BLINKING_LEFT) {
@@ -66,39 +82,30 @@ class BikeLight {
         /*
             Check if user is braking or blinking and set states accordingly.
             digitalRead() returns true when it's not activated by user.
+            Update blink_timer or set it to NULL if user is not blinking.
         */
 
         braking = digitalRead(BRAKE_PIN) ? NOT_BRAKING : BRAKING;
-
-        // if not blinking left:
-        //     if not blinking right:
-        //         blinking = NOT_BLINKING
-        //     else:
-        //         blinking = BLINKING_RIGHT
-        // else:
-        //     blinking = BLINKING_LEFT
         blinking = digitalRead(LEFT_BLINKER_PIN) ?
                    digitalRead(RIGHT_BLINKER_PIN) ? NOT_BLINKING : BLINKING_RIGHT :
                    BLINKING_LEFT;
-
-        // if blinking:
-        //     if blink_timer == NULL:
-        //         blink_timer = millis()
-        //     else:
-        //         blink_timer = blink_timer
-        // else:
-        //     blink_timer = NULL
         blink_timer = blinking ? blink_timer == NULL ? millis() : blink_timer : NULL;
     }
 
     void update_leds() {
         /*
-            Updates leds' colors.
-            First sets all to red if braking or dim_red if idling. Calls blink()
-            -method if user is blinking.
-            Finally calls NeoPixel's show() -method to show updated colors.
+            Clears all pixel colors before setting new.
+            Updates leds' colors and calls NeoPixel's show() -method
+            to show updated colors.
         */
-        np.fill(braking ? red : dim_red);
+        np.clear();
+        
+        if(braking) {
+            this -> brake();
+        } else {
+            this -> idle();
+        }
+
         if(blinking) {
             this -> blink();
         }
@@ -119,7 +126,6 @@ void setup() {
 }
 
 void loop() {
-    delay(100);
     bl.update_states();
     bl.update_leds();
 }
